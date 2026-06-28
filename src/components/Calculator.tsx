@@ -91,6 +91,14 @@ export default function CalculatorSection() {
       return { width: w, height: h, qty: q, m2, basePrice, surcharge, totalPrice, color: row.color };
     });
     setResults(calculated);
+    const total = calculated.reduce((s, r) => s + r.totalPrice, 0);
+    if (typeof (window as any).fbq === 'function') {
+      (window as any).fbq('track', 'ViewContent', {
+        content_name: 'Kalkulátor számítás',
+        value: Math.round(total),
+        currency: 'HUF',
+      });
+    }
   };
 
   const isValid = rows.every(r => parseFloat(r.width) > 0 && parseFloat(r.height) > 0);

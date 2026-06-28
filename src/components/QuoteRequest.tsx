@@ -119,7 +119,15 @@ export default function QuoteRequest() {
   const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr;
 
   const handleSubmit = async () => {
-    console.log('Quote form submitted:', form);
+    if (typeof window !== 'undefined' && typeof (window as any).fbq === 'function') {
+      (window as any).fbq('track', 'Lead', {
+        content_name: form.installOption === 'survey' ? 'Felmérés + beépítés' : 'Csak termék',
+        content_category: 'Ajánlatkérés',
+      });
+      if (form.installOption === 'survey') {
+        (window as any).fbq('track', 'Schedule');
+      }
+    }
     await new Promise(resolve => setTimeout(resolve, 1200));
     setSubmitted(true);
   };
@@ -149,7 +157,7 @@ export default function QuoteRequest() {
               Hamarosan felvesszük Önnel a kapcsolatot.
             </p>
             <p className="text-muted mt-4">
-              Inkább telefonnálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
+              Inkább telefonálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
             </p>
           </motion.div>
         </div>
@@ -216,7 +224,7 @@ export default function QuoteRequest() {
                     >
                       <Package size={28} className="text-orange mb-3" />
                       <h4 className="font-display font-semibold text-lg text-ink mb-1">Csak terméket kérek</h4>
-                      <p className="text-sm text-muted">A plisszé szúnyoghálót méretre gyártva kérheti, a beépítést saját maga végzi.</p>
+                      <p className="text-sm text-muted">A pliszé szúnyoghálót méretre gyártva kérheti, a beépítést saját maga végzi.</p>
                     </button>
                     <button
                       onClick={() => selectInstall('survey')}
@@ -477,7 +485,7 @@ export default function QuoteRequest() {
           </div>
 
           <p className="text-center text-sm text-muted mt-6">
-            Inkább telefonnálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
+            Inkább telefonálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
           </p>
         </div>
       </div>

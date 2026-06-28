@@ -2,7 +2,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 import { Phone, Shield, Cat, Truck } from 'lucide-react';
 
-const words = ['Egyedi', 'plisszé', 'szúnyogháló,', 'méretre', 'szabva'];
+const words = ['Egyedi', 'pliszé', 'szúnyogháló,', 'méretre', 'szabva'];
 
 const trustChips = [
   { icon: Shield, label: 'Teljes körű garancia', comingSoon: false },
@@ -31,7 +31,7 @@ export default function Hero() {
       >
         <img
           src="/images/terasz_fooldal.jpg"
-          alt="Modern terasz plisszé szúnyoghálóval, panorámás kilátással"
+          alt="Modern terasz pliszé szúnyoghálóval, panorámás kilátással"
           className="w-full h-[120%] object-cover"
         />
       </motion.div>
@@ -105,6 +105,7 @@ export default function Hero() {
             <a
               href="tel:+36704224909"
               className="btn-white-outline text-lg px-8 py-4"
+              onClick={() => { if (typeof (window as any).fbq === 'function') (window as any).fbq('track', 'Contact'); }}
             >
               <Phone size={18} />
               Hívjon most

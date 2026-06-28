@@ -32,6 +32,7 @@ export default function FloatingElements() {
         href="tel:+36704224909"
         className="hidden md:flex fixed bottom-8 right-8 z-50 w-14 h-14 bg-orange rounded-full items-center justify-center shadow-glow hover:bg-orange-deep hover:scale-110 transition-all"
         aria-label="Hívás"
+        onClick={() => { if (typeof (window as any).fbq === 'function') (window as any).fbq('track', 'Contact'); }}
       >
         <Phone size={22} className="text-white" />
       </a>
@@ -41,6 +42,7 @@ export default function FloatingElements() {
         <a
           href="tel:+36704224909"
           className="flex-1 flex items-center justify-center gap-2 bg-ink text-white font-display font-semibold text-sm py-3 rounded-xl"
+          onClick={() => { if (typeof (window as any).fbq === 'function') (window as any).fbq('track', 'Contact'); }}
         >
           <Phone size={16} /> Hívás
         </a>
