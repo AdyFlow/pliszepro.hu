@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Truck, ArrowLeft, ArrowRight, CheckCircle2, Info, FileText, Package, ShieldCheck } from 'lucide-react';
 
@@ -72,11 +72,15 @@ export default function QuoteRequest() {
   const [form, setForm] = useState<FormData>(initialForm);
   const [submitted, setSubmitted] = useState(false);
   const [direction, setDirection] = useState(1);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReady, setTurnstileReady] = useState(false);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef<string | null>(null);
-  const hasSiteKey = !!import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [honeypot, setHoneypot] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const formLoadTime = useRef(Date.now());
+  const mathChallenge = useMemo(() => {
+    const a = Math.floor(Math.random() * 9) + 1;
+    const b = Math.floor(Math.random() * 9) + 1;
+    return { a, b, answer: a + b };
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -102,38 +106,6 @@ export default function QuoteRequest() {
     return () => window.removeEventListener('prefill-quote', handler);
   }, []);
 
-  const renderTurnstile = useCallback(() => {
-    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-    if (!siteKey || !turnstileRef.current || !(window as any).turnstile) return;
-    if (turnstileWidgetId.current) {
-      (window as any).turnstile.remove(turnstileWidgetId.current);
-      turnstileWidgetId.current = null;
-    }
-    turnstileWidgetId.current = (window as any).turnstile.render(turnstileRef.current, {
-      sitekey: siteKey,
-      callback: (token: string) => setTurnstileToken(token),
-      'expired-callback': () => setTurnstileToken(null),
-      'error-callback': () => setTurnstileToken(null),
-      theme: 'light',
-      language: 'hu',
-    });
-    setTurnstileReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (step === 3 && hasSiteKey) {
-      const timer = setTimeout(renderTurnstile, 100);
-      return () => clearTimeout(timer);
-    } else {
-      setTurnstileToken(null);
-      setTurnstileReady(false);
-      if (turnstileWidgetId.current && (window as any).turnstile) {
-        (window as any).turnstile.remove(turnstileWidgetId.current);
-        turnstileWidgetId.current = null;
-      }
-    }
-  }, [step, hasSiteKey, renderTurnstile]);
-
   const update = (field: keyof FormData, value: string | boolean | number) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
@@ -153,9 +125,25 @@ export default function QuoteRequest() {
   };
 
   const canAdvanceStep2 = form.city.trim().length > 0;
-  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr && (!hasSiteKey || !!turnstileToken);
+  const isMathCorrect = securityAnswer.trim() === String(mathChallenge.answer);
+  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr && isMathCorrect;
 
   const handleSubmit = async () => {
+    setSubmitError('');
+
+    if (honeypot) return;
+
+    const elapsed = Date.now() - formLoadTime.current;
+    if (elapsed < 3000) {
+      setSubmitError('K\u00e9rj\u00fck, ellen\u0151rizze az adatokat, majd pr\u00f3b\u00e1lja \u00fajra.');
+      return;
+    }
+
+    if (!isMathCorrect) {
+      setSubmitError('K\u00e9rj\u00fck, adja meg a helyes v\u00e1laszt a biztons\u00e1gi ellen\u0151rz\u00e9shez.');
+      return;
+    }
+
     if (typeof window !== 'undefined' && typeof (window as any).fbq === 'function') {
       (window as any).fbq('track', 'Lead', {
         content_name: form.installOption === 'survey' ? 'Felm\u00e9r\u00e9s + be\u00e9p\u00edt\u00e9s' : 'Csak term\u00e9k',
@@ -185,7 +173,6 @@ export default function QuoteRequest() {
           telefon: form.phone,
           email: form.email,
           becsult_ar_netto: form.estimatedPrice,
-          captcha_token: turnstileToken,
         }),
       });
     } catch (_) {
@@ -530,30 +517,46 @@ export default function QuoteRequest() {
                     </p>
                   </div>
 
-                  {/* Turnstile CAPTCHA */}
-                  {hasSiteKey ? (
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck size={14} className="text-muted/70" />
-                        <span className="text-xs font-medium text-muted">{`Biztons\u00e1gi ellen\u0151rz\u00e9s`}</span>
-                      </div>
-                      <div
-                        ref={turnstileRef}
-                        className="flex items-center justify-center rounded-xl overflow-hidden"
-                      />
-                      {turnstileReady && !turnstileToken && form.gdpr && form.name && form.phone && form.email && (
-                        <p className="text-xs text-orange">
-                          {`K\u00e9rj\u00fck, er\u0151s\u00edtse meg, hogy nem robot.`}
-                        </p>
-                      )}
+                  {/* Custom bot protection - math challenge */}
+                  <div className="mt-4 rounded-xl border border-line bg-sand/20 px-4 py-3.5 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={14} className="text-orange/70" />
+                      <span className="text-xs font-medium text-ink/70">Biztons\u00e1gi ellen\u0151rz\u00e9s</span>
                     </div>
-                  ) : import.meta.env.DEV ? (
-                    <div className="mt-4 rounded-xl border border-dashed border-orange/40 bg-orange-tint px-4 py-3">
-                      <p className="text-xs text-orange font-medium">
-                        {`CAPTCHA be\u00e1ll\u00edt\u00e1s sz\u00fcks\u00e9ges: add meg a VITE_TURNSTILE_SITE_KEY \u00e9rt\u00e9ket a .env f\u00e1jlban.`}
+                    <p className="text-sm text-muted">
+                      Mennyi {mathChallenge.a} + {mathChallenge.b}?
+                    </p>
+                    <input
+                      type="number"
+                      value={securityAnswer}
+                      onChange={e => { setSecurityAnswer(e.target.value); setSubmitError(''); }}
+                      className="w-24 border border-line rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange transition-colors"
+                      placeholder="?"
+                    />
+                    {securityAnswer && !isMathCorrect && (
+                      <p className="text-xs text-orange">
+                        K\u00e9rj\u00fck, adja meg a helyes v\u00e1laszt a biztons\u00e1gi ellen\u0151rz\u00e9shez.
                       </p>
-                    </div>
-                  ) : null}
+                    )}
+                  </div>
+
+                  {/* Honeypot - hidden from real users */}
+                  <div className="absolute -left-[9999px] opacity-0 h-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+                    <label htmlFor="website_url">Website</label>
+                    <input
+                      type="text"
+                      id="website_url"
+                      name="website_url"
+                      value={honeypot}
+                      onChange={e => setHoneypot(e.target.value)}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {submitError && (
+                    <p className="text-xs text-orange font-medium">{submitError}</p>
+                  )}
 
                   <div className="flex justify-between pt-4">
                     <button onClick={goBack} className="btn-secondary text-sm px-5 py-2.5">
