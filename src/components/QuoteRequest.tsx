@@ -128,7 +128,32 @@ export default function QuoteRequest() {
         (window as any).fbq('track', 'Schedule');
       }
     }
-    await new Promise(resolve => setTimeout(resolve, 1200));
+
+    try {
+      await fetch('https://services.leadconnectorhq.com/hooks/WVILUafkMwFTamabZKQl/webhook-trigger/5cdacb00-ce78-44dd-8c02-c791fd4c5eb6', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          installOption: form.installOption,
+          width: form.width,
+          height: form.height,
+          qty: form.qty,
+          color: form.color,
+          ralCode: form.ralCode,
+          mesh: form.mesh,
+          city: form.city,
+          preferredDate: form.preferredDate,
+          message: form.message,
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+          estimatedPrice: form.estimatedPrice,
+        }),
+      });
+    } catch (_) {
+      // Submission UI proceeds regardless of webhook delivery
+    }
+
     setSubmitted(true);
   };
 
