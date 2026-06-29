@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Truck, ArrowLeft, ArrowRight, CheckCircle2, Info, FileText, Package } from 'lucide-react';
+import { Truck, ArrowLeft, ArrowRight, CheckCircle2, Info, FileText, Package, ShieldCheck } from 'lucide-react';
 
 type InstallOption = 'self' | 'survey' | null;
 type ColorType = 'white' | 'antracit' | 'custom_ral' | 'combo';
@@ -72,6 +72,9 @@ export default function QuoteRequest() {
   const [form, setForm] = useState<FormData>(initialForm);
   const [submitted, setSubmitted] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -97,6 +100,36 @@ export default function QuoteRequest() {
     return () => window.removeEventListener('prefill-quote', handler);
   }, []);
 
+  const renderTurnstile = useCallback(() => {
+    const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    if (!siteKey || !turnstileRef.current || !(window as any).turnstile) return;
+    if (turnstileWidgetId.current) {
+      (window as any).turnstile.remove(turnstileWidgetId.current);
+      turnstileWidgetId.current = null;
+    }
+    turnstileWidgetId.current = (window as any).turnstile.render(turnstileRef.current, {
+      sitekey: siteKey,
+      callback: (token: string) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(null),
+      'error-callback': () => setTurnstileToken(null),
+      theme: 'light',
+      language: 'hu',
+    });
+  }, []);
+
+  useEffect(() => {
+    if (step === 3) {
+      const timer = setTimeout(renderTurnstile, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setTurnstileToken(null);
+      if (turnstileWidgetId.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(turnstileWidgetId.current);
+        turnstileWidgetId.current = null;
+      }
+    }
+  }, [step, renderTurnstile]);
+
   const update = (field: keyof FormData, value: string | boolean | number) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
@@ -116,7 +149,7 @@ export default function QuoteRequest() {
   };
 
   const canAdvanceStep2 = form.city.trim().length > 0;
-  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr;
+  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr && !!turnstileToken;
 
   const handleSubmit = async () => {
     if (typeof window !== 'undefined' && typeof (window as any).fbq === 'function') {
@@ -134,20 +167,21 @@ export default function QuoteRequest() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          installOption: form.installOption,
-          width: form.width,
-          height: form.height,
-          qty: form.qty,
-          color: form.color,
-          ralCode: form.ralCode,
-          mesh: form.mesh,
-          city: form.city,
-          preferredDate: form.preferredDate,
-          message: form.message,
-          name: form.name,
-          phone: form.phone,
+          kiszallitas: form.installOption === 'survey' ? 'Felmérés + beépítés' : 'Csak termék',
+          szelesseg_cm: form.width,
+          magassag_cm: form.height,
+          darabszam: form.qty,
+          szin: form.color === 'white' ? 'Fehér' : form.color === 'antracit' ? 'Antracit' : form.color === 'custom_ral' ? 'Egyedi RAL' : 'Színkombináció',
+          ral_kod: form.ralCode,
+          halo_tipus: form.mesh,
+          telepules: form.city,
+          kivant_idopont: form.preferredDate,
+          uzenet: form.message,
+          nev: form.name,
+          telefon: form.phone,
           email: form.email,
-          estimatedPrice: form.estimatedPrice,
+          becsult_ar_netto: form.estimatedPrice,
+          captcha_token: turnstileToken,
         }),
       });
     } catch (_) {
@@ -490,6 +524,23 @@ export default function QuoteRequest() {
                     <p className="text-xs text-muted leading-relaxed">
                       Megrendelés esetén a gyártás indításához 50% díjbekérő szükséges.
                     </p>
+                  </div>
+
+                  {/* Turnstile CAPTCHA */}
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck size={14} className="text-muted/70" />
+                      <span className="text-xs font-medium text-muted">Biztonsági ellenőrzés</span>
+                    </div>
+                    <div
+                      ref={turnstileRef}
+                      className="flex items-center justify-center min-h-[65px] rounded-xl border border-line bg-sand/30 overflow-hidden [&>iframe]:!rounded-xl"
+                    />
+                    {!turnstileToken && form.gdpr && form.name && form.phone && form.email && (
+                      <p className="text-xs text-orange">
+                        Kérjük, erősítse meg, hogy nem robot.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex justify-between pt-4">
