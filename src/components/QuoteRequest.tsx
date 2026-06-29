@@ -42,16 +42,16 @@ const initialForm: FormData = {
 };
 
 const RAL_NAMES: Record<string, string> = {
-  '9016': 'Fehér',
-  '7016': 'Antracit szürke',
+  '9016': 'Feh\u00e9r',
+  '7016': 'Antracit sz\u00fcrke',
   '9005': 'Fekete',
-  '8019': 'Sötétbarna',
+  '8019': 'S\u00f6t\u00e9tbarna',
   '3020': 'Piros',
-  '5015': 'Égkék',
-  '6005': 'Mohazöld',
-  '1015': 'Elefántcsont',
-  '7035': 'Világosszürke',
-  '7024': 'Grafitszürke',
+  '5015': '\u00c9gk\u00e9k',
+  '6005': 'Mohaz\u00f6ld',
+  '1015': 'Elef\u00e1ntcsont',
+  '7035': 'Vil\u00e1gossz\u00fcrke',
+  '7024': 'Grafitsz\u00fcrke',
 };
 
 function parseRalCode(input: string): string {
@@ -73,8 +73,10 @@ export default function QuoteRequest() {
   const [submitted, setSubmitted] = useState(false);
   const [direction, setDirection] = useState(1);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetId = useRef<string | null>(null);
+  const hasSiteKey = !!import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -91,7 +93,7 @@ export default function QuoteRequest() {
           mesh: firstRow.mesh === 'standard' ? 'Standard' : 'Standard',
           estimatedPrice: detail.totalPrice || 0,
           message: detail.rows.length > 1
-            ? `Kalkulátorból: ${detail.rows.map((r: { width: string; height: string; qty: string }) => `${r.width}x${r.height} cm, ${r.qty} db`).join('; ')} — Becsült nettó ár: ${Math.round(detail.totalPrice).toLocaleString('hu-HU')} Ft`
+            ? `Kalkul\u00e1torb\u00f3l: ${detail.rows.map((r: { width: string; height: string; qty: string }) => `${r.width}x${r.height} cm, ${r.qty} db`).join('; ')} \u2014 Becs\u00fclt nett\u00f3 \u00e1r: ${Math.round(detail.totalPrice).toLocaleString('hu-HU')} Ft`
             : '',
         }));
       }
@@ -115,20 +117,22 @@ export default function QuoteRequest() {
       theme: 'light',
       language: 'hu',
     });
+    setTurnstileReady(true);
   }, []);
 
   useEffect(() => {
-    if (step === 3) {
+    if (step === 3 && hasSiteKey) {
       const timer = setTimeout(renderTurnstile, 100);
       return () => clearTimeout(timer);
     } else {
       setTurnstileToken(null);
+      setTurnstileReady(false);
       if (turnstileWidgetId.current && (window as any).turnstile) {
         (window as any).turnstile.remove(turnstileWidgetId.current);
         turnstileWidgetId.current = null;
       }
     }
-  }, [step, renderTurnstile]);
+  }, [step, hasSiteKey, renderTurnstile]);
 
   const update = (field: keyof FormData, value: string | boolean | number) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -149,13 +153,13 @@ export default function QuoteRequest() {
   };
 
   const canAdvanceStep2 = form.city.trim().length > 0;
-  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr && !!turnstileToken;
+  const canAdvanceStep3 = form.name.trim().length > 0 && form.phone.trim().length > 0 && form.email.trim().length > 0 && form.gdpr && (!hasSiteKey || !!turnstileToken);
 
   const handleSubmit = async () => {
     if (typeof window !== 'undefined' && typeof (window as any).fbq === 'function') {
       (window as any).fbq('track', 'Lead', {
-        content_name: form.installOption === 'survey' ? 'Felmérés + beépítés' : 'Csak termék',
-        content_category: 'Ajánlatkérés',
+        content_name: form.installOption === 'survey' ? 'Felm\u00e9r\u00e9s + be\u00e9p\u00edt\u00e9s' : 'Csak term\u00e9k',
+        content_category: 'Aj\u00e1nlatk\u00e9r\u00e9s',
       });
       if (form.installOption === 'survey') {
         (window as any).fbq('track', 'Schedule');
@@ -167,11 +171,11 @@ export default function QuoteRequest() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          kiszallitas: form.installOption === 'survey' ? 'Felmérés + beépítés' : 'Csak termék',
+          kiszallitas: form.installOption === 'survey' ? 'Felm\u00e9r\u00e9s + be\u00e9p\u00edt\u00e9s' : 'Csak term\u00e9k',
           szelesseg_cm: form.width,
           magassag_cm: form.height,
           darabszam: form.qty,
-          szin: form.color === 'white' ? 'Fehér' : form.color === 'antracit' ? 'Antracit' : form.color === 'custom_ral' ? 'Egyedi RAL' : 'Színkombináció',
+          szin: form.color === 'white' ? 'Feh\u00e9r' : form.color === 'antracit' ? 'Antracit' : form.color === 'custom_ral' ? 'Egyedi RAL' : 'Sz\u00ednkombin\u00e1ci\u00f3',
           ral_kod: form.ralCode,
           halo_tipus: form.mesh,
           telepules: form.city,
@@ -210,13 +214,13 @@ export default function QuoteRequest() {
               <CheckCircle2 size={40} className="text-green-600" />
             </div>
             <h3 className="font-display font-bold text-2xl text-ink mb-3">
-              Köszönjük!
+              K\u00f6sz\u00f6nj\u00fck!
             </h3>
             <p className="text-muted text-lg">
-              Hamarosan felvesszük Önnel a kapcsolatot.
+              Hamarosan felvessz\u00fck \u00d6nnel a kapcsolatot.
             </p>
             <p className="text-muted mt-4">
-              Inkább telefonálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
+              Ink\u00e1bb telefon\u00e1lna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
             </p>
           </motion.div>
         </div>
@@ -236,9 +240,9 @@ export default function QuoteRequest() {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <p className="section-overline">Kapcsolatfelvétel</p>
+          <p className="section-overline">Kapcsolatfelv\u00e9tel</p>
           <h2 className="font-display font-bold text-3xl md:text-4xl lg:text-5xl text-ink mb-4">
-            Kérjen ajánlatot
+            K\u00e9rjen aj\u00e1nlatot
           </h2>
         </motion.div>
 
@@ -253,7 +257,7 @@ export default function QuoteRequest() {
                   {s}
                 </div>
                 <span className={`hidden sm:inline text-xs font-medium ${step >= s ? 'text-ink' : 'text-muted'}`}>
-                  {s === 1 ? 'Hogyan kéri?' : s === 2 ? 'Részletek' : 'Kapcsolat'}
+                  {s === 1 ? 'Hogyan k\u00e9ri?' : s === 2 ? 'R\u00e9szletek' : 'Kapcsolat'}
                 </span>
                 {s < 3 && <div className={`w-8 h-0.5 transition-colors duration-300 ${step > s ? 'bg-orange' : 'bg-line'}`} />}
               </div>
@@ -273,7 +277,7 @@ export default function QuoteRequest() {
                   exit="exit"
                   transition={{ duration: 0.3 }}
                 >
-                  <p className="text-center text-muted mb-8 font-medium">Hogyan szeretné kérni?</p>
+                  <p className="text-center text-muted mb-8 font-medium">Hogyan szeretn\u00e9 k\u00e9rni?</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button
                       onClick={() => selectInstall('self')}
@@ -282,8 +286,8 @@ export default function QuoteRequest() {
                       }`}
                     >
                       <Package size={28} className="text-orange mb-3" />
-                      <h4 className="font-display font-semibold text-lg text-ink mb-1">Csak terméket kérek</h4>
-                      <p className="text-sm text-muted">A pliszé szúnyoghálót méretre gyártva kérheti, a beépítést saját maga végzi.</p>
+                      <h4 className="font-display font-semibold text-lg text-ink mb-1">Csak term\u00e9ket k\u00e9rek</h4>
+                      <p className="text-sm text-muted">A plisz\u00e9 sz\u00fanyogh\u00e1l\u00f3t m\u00e9retre gy\u00e1rtva k\u00e9rheti, a be\u00e9p\u00edt\u00e9st saj\u00e1t maga v\u00e9gzi.</p>
                     </button>
                     <button
                       onClick={() => selectInstall('survey')}
@@ -292,8 +296,8 @@ export default function QuoteRequest() {
                       }`}
                     >
                       <Truck size={28} className="text-orange mb-3" />
-                      <h4 className="font-display font-semibold text-lg text-ink mb-1">Felmérést és beépítést is kérek</h4>
-                      <p className="text-sm text-muted">Helyszíni felméréssel és szakszerű beépítéssel készítünk ajánlatot.</p>
+                      <h4 className="font-display font-semibold text-lg text-ink mb-1">Felm\u00e9r\u00e9st \u00e9s be\u00e9p\u00edt\u00e9st is k\u00e9rek</h4>
+                      <p className="text-sm text-muted">Helysz\u00edni felm\u00e9r\u00e9ssel \u00e9s szakszer\u0171 be\u00e9p\u00edt\u00e9ssel k\u00e9sz\u00edt\u00fcnk aj\u00e1nlatot.</p>
                     </button>
                   </div>
 
@@ -305,7 +309,7 @@ export default function QuoteRequest() {
                     >
                       <Info size={16} className="text-orange shrink-0 mt-0.5" />
                       <p className="text-xs text-muted leading-relaxed">
-                        Saját beépítés esetén a méret visszaszabása külön díj ellenében kérhető. Csak szállítás esetén a beépítésre és a helyszíni méretpontosságra nem tudunk garanciát vállalni.
+                        Saj\u00e1t be\u00e9p\u00edt\u00e9s eset\u00e9n a m\u00e9ret visszaszab\u00e1sa k\u00fcl\u00f6n d\u00edj ellen\u00e9ben k\u00e9rhet\u0151. Csak sz\u00e1ll\u00edt\u00e1s eset\u00e9n a be\u00e9p\u00edt\u00e9sre \u00e9s a helysz\u00edni m\u00e9retpontoss\u00e1gra nem tudunk garanci\u00e1t v\u00e1llalni.
                       </p>
                     </motion.div>
                   )}
@@ -326,7 +330,7 @@ export default function QuoteRequest() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="text-xs font-medium text-muted mb-1 block">
-                        Szélesség (cm) {form.installOption === 'survey' && <span className="text-muted/60">— opcionális</span>}
+                        Sz\u00e9less\u00e9g (cm) {form.installOption === 'survey' && <span className="text-muted/60">\u2014 opcion\u00e1lis</span>}
                       </label>
                       <input
                         type="number"
@@ -338,7 +342,7 @@ export default function QuoteRequest() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted mb-1 block">
-                        Magasság (cm) {form.installOption === 'survey' && <span className="text-muted/60">— opcionális</span>}
+                        Magass\u00e1g (cm) {form.installOption === 'survey' && <span className="text-muted/60">\u2014 opcion\u00e1lis</span>}
                       </label>
                       <input
                         type="number"
@@ -349,7 +353,7 @@ export default function QuoteRequest() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted mb-1 block">Darabszám</label>
+                      <label className="text-xs font-medium text-muted mb-1 block">Darabsz\u00e1m</label>
                       <input
                         type="number"
                         min="1"
@@ -363,20 +367,20 @@ export default function QuoteRequest() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-muted mb-1 block">Szín</label>
+                      <label className="text-xs font-medium text-muted mb-1 block">Sz\u00edn</label>
                       <select
                         value={form.color}
                         onChange={e => update('color', e.target.value)}
                         className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange transition-colors bg-white"
                       >
-                        <option value="white">Fehér — alapáras</option>
-                        <option value="antracit">Antracit — alapáras</option>
-                        <option value="custom_ral">Egyedi RAL szín — +30%</option>
-                        <option value="combo">Színkombináció — +30%</option>
+                        <option value="white">Feh\u00e9r \u2014 alap\u00e1ras</option>
+                        <option value="antracit">Antracit \u2014 alap\u00e1ras</option>
+                        <option value="custom_ral">Egyedi RAL sz\u00edn \u2014 +30%</option>
+                        <option value="combo">Sz\u00ednkombin\u00e1ci\u00f3 \u2014 +30%</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted mb-1 block">Háló típus</label>
+                      <label className="text-xs font-medium text-muted mb-1 block">H\u00e1l\u00f3 t\u00edpus</label>
                       <select
                         value={form.mesh}
                         onChange={e => update('mesh', e.target.value)}
@@ -390,7 +394,7 @@ export default function QuoteRequest() {
 
                   {hasColorSurcharge(form.color) && (
                     <div>
-                      <label className="text-xs font-medium text-muted mb-1 block">RAL kód</label>
+                      <label className="text-xs font-medium text-muted mb-1 block">RAL k\u00f3d</label>
                       <input
                         type="text"
                         value={form.ralCode}
@@ -402,15 +406,15 @@ export default function QuoteRequest() {
                         <p className="text-xs text-orange mt-1 font-medium">{getRalName(form.ralCode)}</p>
                       )}
                       {form.ralCode && !getRalName(form.ralCode) && parseRalCode(form.ralCode).length >= 4 && (
-                        <p className="text-xs text-muted mt-1">Egyedi RAL szín</p>
+                        <p className="text-xs text-muted mt-1">Egyedi RAL sz\u00edn</p>
                       )}
-                      <p className="text-xs text-muted/70 mt-1">Egyedi RAL szín vagy színkombináció esetén 30% felár kerül felszámításra.</p>
+                      <p className="text-xs text-muted/70 mt-1">Egyedi RAL sz\u00edn vagy sz\u00ednkombin\u00e1ci\u00f3 eset\u00e9n 30% fel\u00e1r ker\u00fcl felsz\u00e1m\u00edt\u00e1sra.</p>
                     </div>
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-muted mb-1 block">Település *</label>
+                      <label className="text-xs font-medium text-muted mb-1 block">Telep\u00fcl\u00e9s *</label>
                       <input
                         type="text"
                         value={form.city}
@@ -422,26 +426,26 @@ export default function QuoteRequest() {
                     </div>
                     {form.installOption === 'survey' && (
                       <div>
-                        <label className="text-xs font-medium text-muted mb-1 block">Kívánt időpont</label>
+                        <label className="text-xs font-medium text-muted mb-1 block">K\u00edv\u00e1nt id\u0151pont</label>
                         <input
                           type="text"
                           value={form.preferredDate}
                           onChange={e => update('preferredDate', e.target.value)}
                           className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange transition-colors"
-                          placeholder="pl. jövő hétfő délelőtt"
+                          placeholder="pl. j\u00f6v\u0151 h\u00e9tf\u0151 d\u00e9lel\u0151tt"
                         />
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-muted mb-1 block">Üzenet (opcionális)</label>
+                    <label className="text-xs font-medium text-muted mb-1 block">\u00dczenet (opcion\u00e1lis)</label>
                     <textarea
                       value={form.message}
                       onChange={e => update('message', e.target.value)}
                       rows={3}
                       className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange transition-colors resize-none"
-                      placeholder="Egyéb megjegyzés..."
+                      placeholder="Egy\u00e9b megjegyz\u00e9s..."
                     />
                   </div>
 
@@ -454,7 +458,7 @@ export default function QuoteRequest() {
                       disabled={!canAdvanceStep2}
                       className="btn-primary text-sm px-5 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Tovább <ArrowRight size={16} />
+                      Tov\u00e1bb <ArrowRight size={16} />
                     </button>
                   </div>
                 </motion.div>
@@ -472,13 +476,13 @@ export default function QuoteRequest() {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="text-xs font-medium text-muted mb-1 block">Név *</label>
+                    <label className="text-xs font-medium text-muted mb-1 block">N\u00e9v *</label>
                     <input
                       type="text"
                       value={form.name}
                       onChange={e => update('name', e.target.value)}
                       className="w-full border border-line rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-orange transition-colors"
-                      placeholder="Teljes név"
+                      placeholder="Teljes n\u00e9v"
                       required
                     />
                   </div>
@@ -514,7 +518,7 @@ export default function QuoteRequest() {
                       className="mt-0.5 w-5 h-5 rounded border-line text-orange focus:ring-orange"
                     />
                     <span className="text-sm text-muted">
-                      Hozzájárulok az adataim kezeléséhez.
+                      Hozz\u00e1j\u00e1rulok az adataim kezel\u00e9s\u00e9hez.
                     </span>
                   </label>
 
@@ -522,26 +526,34 @@ export default function QuoteRequest() {
                   <div className="flex items-start gap-2.5 bg-warm-beige rounded-xl px-4 py-3 mt-2">
                     <FileText size={14} className="text-orange/70 shrink-0 mt-0.5" />
                     <p className="text-xs text-muted leading-relaxed">
-                      Megrendelés esetén a gyártás indításához 50% díjbekérő szükséges.
+                      Megrendel\u00e9s eset\u00e9n a gy\u00e1rt\u00e1s ind\u00edt\u00e1s\u00e1hoz 50% d\u00edjbek\u00e9r\u0151 sz\u00fcks\u00e9ges.
                     </p>
                   </div>
 
                   {/* Turnstile CAPTCHA */}
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={14} className="text-muted/70" />
-                      <span className="text-xs font-medium text-muted">Biztonsági ellenőrzés</span>
+                  {hasSiteKey ? (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck size={14} className="text-muted/70" />
+                        <span className="text-xs font-medium text-muted">{`Biztons\u00e1gi ellen\u0151rz\u00e9s`}</span>
+                      </div>
+                      <div
+                        ref={turnstileRef}
+                        className="flex items-center justify-center rounded-xl overflow-hidden"
+                      />
+                      {turnstileReady && !turnstileToken && form.gdpr && form.name && form.phone && form.email && (
+                        <p className="text-xs text-orange">
+                          {`K\u00e9rj\u00fck, er\u0151s\u00edtse meg, hogy nem robot.`}
+                        </p>
+                      )}
                     </div>
-                    <div
-                      ref={turnstileRef}
-                      className="flex items-center justify-center min-h-[65px] rounded-xl border border-line bg-sand/30 overflow-hidden [&>iframe]:!rounded-xl"
-                    />
-                    {!turnstileToken && form.gdpr && form.name && form.phone && form.email && (
-                      <p className="text-xs text-orange">
-                        Kérjük, erősítse meg, hogy nem robot.
+                  ) : import.meta.env.DEV ? (
+                    <div className="mt-4 rounded-xl border border-dashed border-orange/40 bg-orange-tint px-4 py-3">
+                      <p className="text-xs text-orange font-medium">
+                        {`CAPTCHA be\u00e1ll\u00edt\u00e1s sz\u00fcks\u00e9ges: add meg a VITE_TURNSTILE_SITE_KEY \u00e9rt\u00e9ket a .env f\u00e1jlban.`}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
 
                   <div className="flex justify-between pt-4">
                     <button onClick={goBack} className="btn-secondary text-sm px-5 py-2.5">
@@ -552,7 +564,7 @@ export default function QuoteRequest() {
                       disabled={!canAdvanceStep3}
                       className="btn-primary text-sm px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Küldés
+                      K\u00fcld\u00e9s
                     </button>
                   </div>
                 </motion.div>
@@ -561,7 +573,7 @@ export default function QuoteRequest() {
           </div>
 
           <p className="text-center text-sm text-muted mt-6">
-            Inkább telefonálna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
+            Ink\u00e1bb telefon\u00e1lna? <a href="tel:+36704224909" className="text-orange font-semibold hover:underline">06 70 422 4909</a>
           </p>
         </div>
       </div>
